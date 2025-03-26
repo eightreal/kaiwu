@@ -86,6 +86,15 @@ class Model(nn.Module):
 
         self.apply(self.init_weights)
 
+
+        # 新增策略网络分支 (Actor)
+        self.policy_stream = nn.Sequential(
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Linear(128, np.prod(action_shape)),
+            nn.LogSoftmax(dim=-1)  # 直接输出对数概率提升数值稳定性
+        )
+
     def init_weights(self, m):
         if isinstance(m, nn.Conv2d):
             nn.init.kaiming_normal_(m.weight, mode="fan_in", nonlinearity="relu")
