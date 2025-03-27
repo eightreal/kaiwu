@@ -15,8 +15,9 @@ import numpy as np
 from kaiwu_agent.back_to_the_realm.dqn.feature_process import (
     one_hot_encoding,
     read_relative_position,
-    bump,
+    # bump,
 )
+from utils import bump
 
 
 # The create_cls function is used to dynamically create a class. The first parameter of the function is the type name,
@@ -149,7 +150,12 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
     Reward 4. Rewards related to the flicker
     奖励4. 与闪现相关的奖励
     """
+    
+    # 判断是否使用了闪现
     reward_flicker = 0
+    if _env_info.frame_state.heroes[0].talent.status:
+        # 鼓励使用闪现
+        reward_flicker = -1
     # Reward 4.1 Penalty for flickering into the wall (TODO)
     # 奖励4.1 撞墙闪现的惩罚 (TODO)
 
@@ -178,7 +184,7 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
     # Reward 5.3 Penalty for bumping into the wall
     # 奖励5.3 撞墙的惩罚
     reward_bump = 0
-    is_bump = bump(curr_pos_x, curr_pos_z, prev_pos_x, prev_pos_z)
+    is_bump = bump(curr_pos_x, curr_pos_z, prev_pos_x, prev_pos_z, prev_speed_up)
     # Determine whether it bumps into the wall
     # 判断是否撞墙
     if is_bump:
@@ -199,7 +205,7 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
         "reward_buff": "0",
         "reward_treasure_dists": "0.1",
         "reward_treasure": "0.15",
-        "reward_flicker": "0",
+        "reward_flicker": "0.0001",
         "reward_step": "-0.0005",
         "reward_bump": "-0.005",
         "reward_memory": "-0.005",
