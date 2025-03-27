@@ -9,6 +9,7 @@
 
 """
 
+
 from kaiwu_agent.utils.common_func import create_cls, attached
 import numpy as np
 from kaiwu_agent.back_to_the_realm.target_dqn.feature_process import (
@@ -16,6 +17,7 @@ from kaiwu_agent.back_to_the_realm.target_dqn.feature_process import (
     read_relative_position,
     bump,
 )
+
 
 # The create_cls function is used to dynamically create a class. The first parameter of the function is the type name,
 # and the remaining parameters are the attributes of the class, which should have a default value of None.
@@ -101,13 +103,13 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
     # and no reward is calculated at this time
     # 边界处理: 第一帧时prev_end_dist初始化为1，此时不计算奖励
     if prev_end_dist != 1 and not is_treasures_remain:
-        reward_end_dist += 20 if end_dist < prev_end_dist else -20
+        reward_end_dist += 2 if end_dist < prev_end_dist else -2
 
     # Reward 1.2 Reward for winning
     # 奖励1.2 获胜的奖励
     reward_win = 0
     if terminated and not is_treasures_remain:
-        reward_win += 200
+        reward_win += 2
 
     """
     Reward 2. Rewards related to the treasure chest
@@ -119,13 +121,13 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
     if treasure_dists.count(1.0) < 15:
         prev_min_dist, min_dist = min(prev_treasure_dists), min(treasure_dists)
         if prev_treasure_dists.index(prev_min_dist) == treasure_dists.index(min_dist):
-            reward_treasure_dist += 20 if min_dist < prev_min_dist else -20
+            reward_treasure_dist += 2 if min_dist < prev_min_dist else -2
 
     # Reward 2.2 Reward for getting the treasure chest
     # 奖励2.2 获得宝箱的奖励
     reward_treasure = 0
     if prev_treasure_dists.count(1.0) < treasure_dists.count(1.0):
-        reward_treasure = 200
+        reward_treasure = 2
 
     """
     Reward 3. Rewards related to the buff
@@ -177,7 +179,6 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
     # 奖励5.3 撞墙的惩罚
     reward_bump = 0
     is_bump = bump(curr_pos_x, curr_pos_z, prev_pos_x, prev_pos_z)
-
     # Determine whether it bumps into the wall
     # 判断是否撞墙
     if is_bump:
@@ -187,21 +188,21 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
         reward_bump = 200
 
     """
-    Concatenation of rewards: Here are 10 rewards provided, students can concatenate as needed,
-    and can also add new rewards themselves
+    Concatenation of rewards: Here are 10 rewards provided,
+    students can concatenate as needed, and can also add new rewards themselves
     奖励的拼接: 这里提供了10个奖励, 同学们按需自行拼接, 也可以自行添加新的奖励
     """
     REWARD_CONFIG = {
-        "reward_end_dist": "1.0",
-        "reward_win": "0.5",
+        "reward_end_dist": "0.1",
+        "reward_win": "0.2",
         "reward_buff_dist": "0",
         "reward_buff": "0",
-        "reward_treasure_dists": "1",
-        "reward_treasure": "0.3",
+        "reward_treasure_dists": "0.1",
+        "reward_treasure": "0.15",
         "reward_flicker": "0",
-        "reward_step": "-0.001",
-        "reward_bump": "-0.05",
-        "reward_memory": "-1.0",
+        "reward_step": "-0.0005",
+        "reward_bump": "-0.005",
+        "reward_memory": "-0.005",
     }
 
     reward = [
