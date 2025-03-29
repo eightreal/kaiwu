@@ -17,7 +17,7 @@ from kaiwu_agent.back_to_the_realm.dqn.feature_process import (
     read_relative_position,
     # bump,
 )
-from utils import bump
+from dqn.feature.utils import bump
 
 
 # The create_cls function is used to dynamically create a class. The first parameter of the function is the type name,
