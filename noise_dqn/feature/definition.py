@@ -9,15 +9,123 @@
 
 """
 
+# from kaiwu_agent.utils.common_func import create_cls, attached
+# import numpy as np
+# from kaiwu_agent.back_to_the_realm.target_dqn.feature_process import (
+#     one_hot_encoding,
+#     read_relative_position,
+#     bump,
+# )
+
+
+# # create_cls函数用于动态创建一个类，函数第一个参数为类型名称，剩余参数为类的属性，属性默认值应设为None
+# ObsData = create_cls(
+#     "ObsData",
+#     feature=None,
+#     legal_act=None,
+# )
+
+
+# ActData = create_cls(
+#     "ActData",
+#     move_dir=None,
+#     use_talent=None,
+# )
+
+
+# SampleData = create_cls(
+#     "SampleData",
+#     obs=None,
+#     _obs=None,
+#     obs_legal=None,
+#     _obs_legal=None,
+#     act=None,
+#     rew=None,
+#     ret=None,
+#     done=None,
+# )
+
+
+# def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, _env_info):
+#     pass
+
+
+# @attached
+# def observation_process(raw_obs, env_info=None):
+#     """
+#     This function is an important feature processing function, mainly responsible for:
+#         - Parsing information in the raw data
+#         - Parsing preprocessed feature data
+#         - Processing the features and returning the processed feature vector
+#         - Concatenation of features
+#         - Annotation of legal actions
+#     Function inputs:
+#         - raw_obs: Preprocessed feature data
+#         - env_info: Environment information returned by the game
+#     Function outputs:
+#         - observation: Feature vector
+#         - legal_action: Annotation of legal actions
+
+#     该函数是特征处理的重要函数, 主要负责：
+#         - 解析原始数据里的信息
+#         - 解析预处理后的特征数据
+#         - 对特征进行处理, 并返回处理后的特征向量
+#         - 特征的拼接
+#         - 合法动作的标注
+#     函数的输入：
+#         - raw_obs: 预处理后的特征数据
+#         - env_info: 游戏返回的环境信息
+#     函数的输出：
+#         - observation: 特征向量
+#         - legal_action: 合法动作的标注
+#     """
+#     pass
+
+
+# @attached
+# def action_process(act_data):
+#     pass
+
+
+# @attached
+# def sample_process(list_game_data):
+#     pass
+
+
+# # SampleData <----> NumpyData
+# @attached
+# def SampleData2NumpyData(g_data):
+#     pass
+
+
+# @attached
+# def NumpyData2SampleData(s_data):
+#     pass
+
+
+
+
+
+
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
+
+"""
+@Project :back_to_the_realm
+@File    :definition.py
+@Author  :kaiwu
+@Date    :2022/12/15 22:50
+
+"""
+
 
 from kaiwu_agent.utils.common_func import create_cls, attached
-
 import numpy as np
 from kaiwu_agent.back_to_the_realm.dqn.feature_process import (
     one_hot_encoding,
     read_relative_position,
+    bump,
 )
-from dqn.feature.utils import flicker_bump, bump
 
 
 # The create_cls function is used to dynamically create a class. The first parameter of the function is the type name,
@@ -53,25 +161,6 @@ SampleData = create_cls(
 def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, _env_info):
     reward = 0
 
-    # 如果当前动作什么都没有产生，给与基础的惩罚， 促使agent不做无用内容
-    # base_reward = 10
-
-    # 判断是否使用了闪现
-    talent_used = 0
-    if env_info:
-        pre_talent_availability = env_info.frame_state.heroes[0].talent.status
-    if _env_info:
-        talent_availability = _env_info.frame_state.heroes[0].talent.status
-    
-    talent_used = pre_talent_availability and not talent_availability
-    in_speed = False
-
-    # Get the acceleration status of the agent
-    # 获取智能体的加速状态
-    prev_speed_up = env_info.frame_state.heroes[0].speed_up
-    speed_up = _env_info.frame_state.heroes[0].speed_up
-    in_speed = prev_speed_up
-
     # Get the current position coordinates of the agent
     # 获取当前智能体的位置坐标
     pos = _env_info.frame_state.heroes[0].pos
@@ -102,6 +191,11 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
         if organ.sub_type == 2:
             buff_availability = organ.status
 
+    # Get the acceleration status of the agent
+    # 获取智能体的加速状态
+    prev_speed_up = env_info.frame_state.heroes[0].speed_up
+    speed_up = _env_info.frame_state.heroes[0].speed_up
+
     # Are there any remaining treasure chests
     # 是否有剩余宝箱
     is_treasures_remain = True if treasure_dists.count(1.0) < 15 else False
@@ -124,7 +218,7 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
     # 奖励1.2 获胜的奖励
     reward_win = 0
     if terminated and not is_treasures_remain:
-        reward_win += 200
+        reward_win += 2
 
     """
     Reward 2. Rewards related to the treasure chest
@@ -142,7 +236,7 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
     # 奖励2.2 获得宝箱的奖励
     reward_treasure = 0
     if prev_treasure_dists.count(1.0) < treasure_dists.count(1.0):
-        reward_treasure = 200
+        reward_treasure = 2
 
     """
     Reward 3. Rewards related to the buff
@@ -165,24 +259,20 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
     奖励4. 与闪现相关的奖励
     """
     reward_flicker = 0
-    if talent_used:
-        # Reward 4.1 Penalty for flickering into the wall (TODO)
-        # 奖励4.1 撞墙闪现的惩罚 (TODO)
-        if flicker_bump(curr_pos_x, curr_pos_z, prev_pos_x, prev_pos_z):
-            reward_flicker = -50
+    # Reward 4.1 Penalty for flickering into the wall (TODO)
+    # 奖励4.1 撞墙闪现的惩罚 (TODO)
 
-        # Reward 4.2 Reward for normal flickering (TODO)
-        # 奖励4.2 正常闪现的奖励 (TODO)
-        if not flicker_bump(curr_pos_x, curr_pos_z, prev_pos_x, prev_pos_z):
-            reward_flicker = reward_end_dist + reward_buff_dist + reward_treasure_dist
+    # Reward 4.2 Reward for normal flickering (TODO)
+    # 奖励4.2 正常闪现的奖励 (TODO)
 
+    # Reward 4.3 Reward for super flickering (TODO)
+    # 奖励4.3 超级闪现的奖励 (TODO)
 
     """
     Reward 5. Rewards for quick clearance
     奖励5. 关于快速通关的奖励
     """
-
-    reward_step = 5
+    reward_step = 1
     # Reward 5.1 Penalty for not getting close to the end point after collecting all the treasure chests
     # (TODO: Give penalty after collecting all the treasure chests, encourage full collection)
     # 奖励5.1 收集完所有宝箱却未靠近终点的惩罚
@@ -197,17 +287,14 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
     # Reward 5.3 Penalty for bumping into the wall
     # 奖励5.3 撞墙的惩罚
     reward_bump = 0
-    is_bump = bump(curr_pos_x, curr_pos_z, prev_pos_x, prev_pos_z, in_speed)
+    is_bump = bump(curr_pos_x, curr_pos_z, prev_pos_x, prev_pos_z)
     # Determine whether it bumps into the wall
     # 判断是否撞墙
     if is_bump:
         # Give a relatively large penalty for bumping into the wall,
         # so that the agent can learn not to bump into the wall as soon as possible
         # 对撞墙给予一个比较大的惩罚，以便agent能够尽快学会不撞墙
-        reward_bump = 20
-
-    if in_speed:
-        reward_bump * 1.2
+        reward_bump = 200
 
     """
     Concatenation of rewards: Here are 10 rewards provided,
@@ -215,21 +302,19 @@ def reward_shaping(frame_no, score, terminated, truncated, obs, _obs, env_info, 
     奖励的拼接: 这里提供了10个奖励, 同学们按需自行拼接, 也可以自行添加新的奖励
     """
     REWARD_CONFIG = {
-        # "base_reward": "-0.1",
         "reward_end_dist": "0.1",
         "reward_win": "0.2",
         "reward_buff_dist": "0",
         "reward_buff": "0",
         "reward_treasure_dists": "0.1",
         "reward_treasure": "0.15",
-        "reward_flicker": "-0.005",
-        "reward_step": "-0.005",
-        "reward_bump": "0.005",
+        "reward_flicker": "0",
+        "reward_step": "-0.0005",
+        "reward_bump": "-0.005",
         "reward_memory": "-0.005",
     }
 
     reward = [
-        # base_reward * float(REWARD_CONFIG["base_reward"]),
         reward_end_dist * float(REWARD_CONFIG["reward_end_dist"]),
         reward_win * float(REWARD_CONFIG["reward_win"]),
         reward_buff_dist * float(REWARD_CONFIG["reward_buff_dist"]),
